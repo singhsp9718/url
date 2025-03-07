@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple URL Shortener</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        input {
+            width: 80%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px;
+            background: blue;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        #urlList {
+            margin-top: 20px;
+            text-align: left;
+            display: inline-block;
+            width: 80%;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>URL Shortener</h1>
+    <input type="text" id="longUrl" placeholder="Enter URL here">
+    <button onclick="shortenUrl()">Shorten</button>
+    <button onclick="resetInput()" style="background: red;">Reset</button>
+    <p id="result"></p>
+    
+    <div id="urlList">
+        <h2>Shortened URLs</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Original URL</th>
+                    <th>Shortened URL</th>
+                </tr>
+            </thead>
+            <tbody id="urlTableBody"></tbody>
+        </table>
+        <button onclick="downloadCSV()">Download CSV</button>
+    </div>
+    
+    <script>
+        let urlData = [];
+
+        function shortenUrl() {
+            const longUrl = document.getElementById('longUrl').value;
+            if (!longUrl) {
+                alert('Please enter a URL');
+                return;
+            }
+            
+            fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.shorturl) {
+                        document.getElementById('result').innerHTML = 
+                            `Shortened URL: <a href="${data.shorturl}" target="_blank">${data.shorturl}</a>`;
+                        
+                        urlData.push({ original: longUrl, short: data.shorturl });
+                        updateTable();
+                    } else {
+                        document.getElementById('result').textContent = 'Error shortening URL';
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function resetInput() {
+            document.getElementById('longUrl').value = "";
+            document.getElementById('result').textContent = "";
+        }
+
+        function updateTable() {
+            const tableBody = document.getElementById('urlTableBody');
+            tableBody.innerHTML = "";
+            urlData.forEach(entry => {
+                const row = `<tr><td>${entry.original}</td><td><a href="${entry.short}" target="_blank">${entry.short}</a></td></tr>`;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        function downloadCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,Original URL,Shortened URL\n";
+            urlData.forEach(entry => {
+                csvContent += `"${entry.original}","${entry.short}"\n`;
+            });
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            if (navigator.msSaveBlob) { 
+                navigator.msSaveBlob(blob, "shortened_urls.csv");
+            } else {
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.setAttribute("download", "shortened_urls.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+    </script>
+</body>
+</html>
